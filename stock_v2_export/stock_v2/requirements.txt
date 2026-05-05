@@ -1,0 +1,16 @@
+torch
+scikit-learn
+xgboost
+yfinance
+ta
+pandas
+numpy
+joblib
+mlflow
+fastapi
+httpx
+requests
+pytest
+pylint
+uvicorn
+pennylane
