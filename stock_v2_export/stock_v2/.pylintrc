@@ -1,0 +1,36 @@
+[MASTER]
+ignore=__pycache__,tests,test_models,test_results,test_data,test_mlruns
+ignore-patterns=test_.*
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    W0611,  # unused-import (pennylane imports needed for side effects)
+    W0212,  # protected-access
+    R0903,  # too-few-public-methods
+    R0913,  # too-many-arguments
+    R0914,  # too-many-locals
+    W0621,  # redefined-outer-name (pytest fixtures)
+    E1101,  # module has no member (torch dynamic)
+    W0201,  # attribute defined outside init (pytorch pattern)
+    C0301,  # line too long
+    W0703,  # broad exception
+
+[FORMAT]
+max-line-length=120
+indent-string='    '
+
+[DESIGN]
+max-args=10
+max-locals=20
+max-returns=8
+max-branches=15
+max-statements=60
+
+[SIMILARITIES]
+min-similarity-lines=10
+
+[VARIABLES]
+good-names=i,j,k,n,m,x,y,p,r,f,h,l,v,o,c,e,t,X,y,lr,df

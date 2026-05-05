@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/f7930d80225a4508a054496e3958939c/artifacts
+end_time: 1777945358502
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: f7930d80225a4508a054496e3958939c
+run_name: GRU
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945358230
+status: 3
+tags: []
+user_id: root

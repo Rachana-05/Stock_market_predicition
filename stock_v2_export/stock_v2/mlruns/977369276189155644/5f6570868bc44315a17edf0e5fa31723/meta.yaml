@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/5f6570868bc44315a17edf0e5fa31723/artifacts
+end_time: 1777945459749
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: 5f6570868bc44315a17edf0e5fa31723
+run_name: XGBoost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945459527
+status: 3
+tags: []
+user_id: root

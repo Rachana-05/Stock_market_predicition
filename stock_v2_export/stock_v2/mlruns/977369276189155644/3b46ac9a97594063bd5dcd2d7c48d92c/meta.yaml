@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/3b46ac9a97594063bd5dcd2d7c48d92c/artifacts
+end_time: 1777945099784
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: 3b46ac9a97594063bd5dcd2d7c48d92c
+run_name: TCN
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945099538
+status: 3
+tags: []
+user_id: root

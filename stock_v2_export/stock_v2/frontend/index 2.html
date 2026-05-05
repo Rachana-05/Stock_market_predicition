@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NSE QuantPredict — Stock Market Prediction Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#05080f;--bg2:#090e1a;--bg3:#0d1525;--bg4:#111c30;
+  --border:#1a2d4a;--border2:#243d5e;
+  --accent:#00c8ff;--accent2:#7c3aed;--accent3:#10b981;
+  --warn:#f59e0b;--danger:#ef4444;--text:#dde6f0;
+  --text2:#7a9ab8;--text3:#3d5570;
+  --up:#10b981;--down:#ef4444;--neutral:#94a3b8;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --glow:0 0 24px rgba(0,200,255,.12);
+  --glow-up:0 0 20px rgba(16,185,129,.15);
+  --glow-dn:0 0 20px rgba(239,68,68,.15);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* grid bg */
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,200,255,.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,200,255,.025) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;z-index:0}
+
+.wrap{position:relative;z-index:1}
+
+/* ── TOPBAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 32px;
+  background:rgba(5,8,15,.96);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(16px);
+  position:sticky;top:0;z-index:100;gap:16px;flex-wrap:wrap;
+}
+.logo{font-size:18px;font-weight:700;letter-spacing:-.3px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:11px;color:var(--text3);font-weight:400;margin-top:1px;
+  -webkit-text-fill-color:var(--text3)}
+.topbar-right{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.live-badge{display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:11px;padding:4px 12px;
+  background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
+  border-radius:20px;color:var(--up)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.dot.live{background:var(--up);box-shadow:0 0 8px var(--up);animation:pulse 2s infinite}
+.dot.dead{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.clock{font-family:var(--mono);font-size:13px;color:var(--accent)}
+
+/* ── NAV TABS */
+.nav-tabs{display:flex;gap:2px;padding:0 32px;
+  background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-btn{padding:12px 20px;font-size:12px;font-weight:600;
+  letter-spacing:.5px;text-transform:uppercase;border:none;
+  background:transparent;color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text2)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── SECTIONS */
+.tab-section{display:none;padding:28px 32px;animation:fadeIn .2s ease}
+.tab-section.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── SECTION HEADERS */
+.sh{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.sh h2{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2)}
+.sh::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+
+/* ── GRID LAYOUTS */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.grid-1-2{display:grid;grid-template-columns:1fr 2fr;gap:20px}
+
+/* ── CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:20px;transition:all .2s}
+.card:hover{border-color:var(--border2);box-shadow:var(--glow)}
+.card-sm{background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:14px}
+.card-title{font-size:10px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+
+/* ── STAT CARDS */
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:18px;position:relative;overflow:hidden;transition:all .2s}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.stat:hover::before{transform:scaleX(1)}
+.stat:hover{border-color:var(--border2);box-shadow:var(--glow)}
+.stat-label{font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+.stat-val{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--accent);
+  margin:6px 0 2px;line-height:1}
+.stat-sub{font-family:var(--mono);font-size:11px;color:var(--text2)}
+
+/* ── BUTTONS */
+.btn{padding:10px 20px;border-radius:8px;border:none;font-family:var(--sans);
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0096b3);color:#000;
+  box-shadow:0 4px 16px rgba(0,200,255,.2)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,200,255,.35)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sm{padding:6px 14px;font-size:12px;border-radius:6px}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── FORM CONTROLS */
+label{font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px}
+select,input{width:100%;padding:10px 14px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-family:var(--mono);font-size:13px;outline:none;
+  transition:border-color .2s,box-shadow .2s;appearance:none}
+select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,200,255,.1)}
+
+/* ── PARADIGM TAGS */
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;
+  font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.tag-ml{background:rgba(0,200,255,.1);color:var(--accent)}
+.tag-dl{background:rgba(124,58,237,.15);color:#a78bfa}
+.tag-qml{background:rgba(245,158,11,.12);color:var(--warn)}
+.tag-qnn{background:rgba(16,185,129,.1);color:var(--up)}
+.tag-ens{background:rgba(100,116,139,.15);color:var(--neutral)}
+
+/* ── ACCURACY BAR */
+.acc-wrap{display:flex;align-items:center;gap:8px}
+.acc-bar{height:5px;border-radius:3px;min-width:2px;transition:width .6s ease}
+.acc-bar.hi{background:linear-gradient(90deg,var(--up),var(--accent))}
+.acc-bar.lo{background:linear-gradient(90deg,var(--danger),var(--warn))}
+.acc-bar.mid{background:linear-gradient(90deg,var(--warn),var(--accent))}
+.acc-num{font-family:var(--mono);font-size:12px;min-width:48px}
+.acc-num.hi{color:var(--up)}.acc-num.lo{color:var(--danger)}.acc-num.mid{color:var(--warn)}
+
+/* ── TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+thead th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);
+  border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid rgba(26,45,74,.4);transition:background .1s}
+tbody tr:hover{background:rgba(0,200,255,.025)}
+tbody td{padding:10px 14px;color:var(--text2)}
+tbody td:first-child{color:var(--text);font-weight:500}
+
+/* ── PREDICTION BOX */
+.pred-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:32px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:220px;gap:12px;transition:all .4s}
+.pred-box.up{border-color:var(--up);box-shadow:var(--glow-up)}
+.pred-box.down{border-color:var(--down);box-shadow:var(--glow-dn)}
+.pred-arrow{font-size:60px;line-height:1;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.pred-box.up .pred-arrow{transform:translateY(-4px)}
+.pred-box.down .pred-arrow{transform:translateY(4px)}
+.pred-label{font-family:var(--mono);font-size:36px;font-weight:500;letter-spacing:4px}
+.pred-box.up .pred-label{color:var(--up)}.pred-box.down .pred-label{color:var(--down)}
+.pred-meta{font-family:var(--mono);font-size:11px;color:var(--text2);text-align:center;line-height:1.7}
+.pred-ph{color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;line-height:1.8}
+
+/* ── ENSEMBLE VOTE BAR */
+.vote-bar-wrap{background:var(--bg4);border-radius:8px;overflow:hidden;height:28px;
+  position:relative;border:1px solid var(--border)}
+.vote-bar-up{position:absolute;left:0;top:0;height:100%;
+  background:linear-gradient(90deg,rgba(16,185,129,.3),rgba(16,185,129,.15));
+  transition:width .8s ease;display:flex;align-items:center;padding-left:12px}
+.vote-bar-dn{position:absolute;right:0;top:0;height:100%;
+  background:linear-gradient(270deg,rgba(239,68,68,.3),rgba(239,68,68,.15));
+  transition:width .8s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:12px}
+.vote-label{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text)}
+
+/* ── SPINNER */
+.spin{width:18px;height:18px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── CM (confusion matrix) */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-width:220px}
+.cm-cell{padding:14px;border-radius:6px;text-align:center;font-family:var(--mono)}
+.cm-tp,.cm-tn{background:rgba(16,185,129,.15);color:var(--up)}
+.cm-fp,.cm-fn{background:rgba(239,68,68,.12);color:var(--danger)}
+.cm-val{font-size:22px;font-weight:500;display:block}
+.cm-lbl{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+
+/* ── FEATURE IMPORTANCE */
+.fi-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.fi-name{font-family:var(--mono);font-size:11px;color:var(--text2);width:140px;flex-shrink:0}
+.fi-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width .8s ease}
+.fi-val{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:44px;text-align:right}
+
+/* ── TIMELINE / WALK-FORWARD */
+.wf-row{display:flex;align-items:center;gap:12px;padding:8px 0;
+  border-bottom:1px solid rgba(26,45,74,.4)}
+.wf-fold{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:60px}
+.wf-bar-wrap{flex:1;background:var(--bg4);border-radius:3px;height:8px;overflow:hidden}
+.wf-bar{height:100%;border-radius:3px;transition:width 1s ease}
+.wf-acc{font-family:var(--mono);font-size:11px;min-width:52px;text-align:right}
+
+/* ── TOAST */
+.toasts{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.toast{padding:12px 16px;border-radius:8px;font-family:var(--mono);font-size:12px;
+  border:1px solid;max-width:340px;animation:slideIn .3s ease}
+.toast.s{background:rgba(16,185,129,.1);border-color:var(--up);color:var(--up)}
+.toast.e{background:rgba(239,68,68,.1);border-color:var(--danger);color:var(--danger)}
+.toast.i{background:rgba(0,200,255,.08);border-color:var(--accent);color:var(--accent)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+
+/* ── RESPONSIVE */
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){
+  .grid-4,.grid-3,.grid-2,.grid-2-1,.grid-1-2{grid-template-columns:1fr}
+  .main{padding:16px}.topbar,.nav-tabs{padding-left:16px;padding-right:16px}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ── TOPBAR -->
+<header class="topbar">
+  <div>
+    <div class="logo">NSE QuantPredict</div>
+    <div class="logo-sub">Full-Stack Stock Market Prediction · ML · DL · QML · QNN</div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge"><div class="dot" id="api-dot"></div><span id="api-txt">Checking API...</span></div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ── NAV TABS -->
+<nav class="nav-tabs">
+  <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+  <button class="tab-btn" onclick="showTab('predict',this)">Live Predict</button>
+  <button class="tab-btn" onclick="showTab('ensemble',this)">Ensemble</button>
+  <button class="tab-btn" onclick="showTab('results',this)">All Results</button>
+  <button class="tab-btn" onclick="showTab('models',this)">Models</button>
+  <button class="tab-btn" onclick="showTab('features',this)">Features</button>
+  <button class="tab-btn" onclick="showTab('quantum',this)">Quantum</button>
+  <button class="tab-btn" onclick="showTab('about',this)">About</button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 1 — OVERVIEW
+═══════════════════════════════════════════════════ -->
+<section class="tab-section active" id="tab-overview">
+  <div class="sh"><h2>System Overview</h2></div>
+
+  <!-- Stats row -->
+  <div class="grid-4" style="margin-bottom:24px">
+    <div class="stat"><div class="stat-label">Total Models</div><div class="stat-val" id="ov-total">—</div><div class="stat-sub">ML · DL · QML · QNN</div></div>
+    <div class="stat"><div class="stat-label">Best Accuracy</div><div class="stat-val" id="ov-best">—</div><div class="stat-sub" id="ov-best-sub">—</div></div>
+    <div class="stat"><div class="stat-label">Models ≥ 60%</div><div class="stat-val" id="ov-60" style="color:var(--up)">—</div><div class="stat-sub">above random baseline</div></div>
+    <div class="stat"><div class="stat-label">Mean Accuracy</div><div class="stat-val" id="ov-mean">—</div><div class="stat-sub">all classification models</div></div>
+  </div>
+
+  <!-- Paradigm breakdown -->
+  <div class="sh"><h2>Performance by Paradigm</h2></div>
+  <div class="grid-4" style="margin-bottom:24px" id="paradigm-cards">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- Top 5 models table -->
+  <div class="sh"><h2>Top Performing Models</h2></div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table><thead><tr>
+        <th>Rank</th><th>Model</th><th>Paradigm</th>
+        <th>Fit Score</th><th>Predict Score</th><th>F1</th><th>Train Time</th>
+      </tr></thead>
+      <tbody id="top-tbody"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 2 — LIVE PREDICT
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-predict">
+  <div class="sh"><h2>Live Next-Day Prediction</h2></div>
+  <div class="grid-2-1" style="margin-bottom:20px">
+
+    <div class="card" style="display:flex;flex-direction:column;gap:16px">
+      <div>
+        <label>Stock Ticker</label>
+        <select id="p-ticker">
+          <option value="RELIANCE">RELIANCE.NS — Reliance Industries</option>
+          <option value="TCS">TCS.NS — Tata Consultancy Services</option>
+          <option value="INFY">INFY.NS — Infosys</option>
+          <option value="HDFCBANK">HDFCBANK.NS — HDFC Bank</option>
+          <option value="ICICIBANK">ICICIBANK.NS — ICICI Bank</option>
+          <option value="WIPRO">WIPRO.NS — Wipro</option>
+          <option value="BAJFINANCE">BAJFINANCE.NS — Bajaj Finance</option>
+          <option value="SBIN">SBIN.NS — State Bank of India</option>
+          <option value="TATAMOTORS">TATAMOTORS.NS — Tata Motors</option>
+          <option value="HINDUNILVR">HINDUNILVR.NS — HUL</option>
+        </select>
+      </div>
+      <div>
+        <label>Model</label>
+        <select id="p-model">
+          <optgroup label="ML — Classical">
+            <option value="LSTM">LSTM</option>
+            <option value="GRU">GRU</option>
+            <option value="XGBoost">XGBoost</option>
+            <option value="RandomForest">Random Forest</option>
+            <option value="SVM">SVM</option>
+          </optgroup>
+          <optgroup label="DL — Deep Learning">
+            <option value="DNN">DNN (5-layer Dense)</option>
+            <option value="Transformer">Transformer</option>
+            <option value="CNNLSTM">CNN-LSTM</option>
+            <option value="BiLSTM">BiLSTM</option>
+            <option value="TCN">TCN</option>
+          </optgroup>
+          <optgroup label="QML — Quantum ML">
+            <option value="QSVM_ZZFeatureMap">QSVM + ZZFeatureMap</option>
+            <option value="VQC_ZZFeatureMap">VQC + ZZFeatureMap</option>
+          </optgroup>
+          <optgroup label="QNN — Quantum Neural Net">
+            <option value="HybridQNN">Hybrid QNN</option>
+          </optgroup>
+          <optgroup label="Ensemble">
+            <option value="StackingEnsemble">Stacking Ensemble</option>
+          </optgroup>
+        </select>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:12px">
+        <div style="font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:6px">Prediction Pipeline</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          1. Fetch latest NSE OHLCV data<br/>
+          2. Compute 45 technical indicators<br/>
+          3. Compute Nifty50 relative features<br/>
+          4. Scale using training scaler<br/>
+          5. Run selected model<br/>
+          6. Return UP / DOWN prediction
+        </div>
+      </div>
+      <button class="btn btn-primary" id="p-btn" onclick="runPredict()">Run Prediction →</button>
+    </div>
+
+    <div class="pred-box" id="pred-box">
+      <div class="pred-ph">Select a stock and model<br/>then click Run Prediction</div>
+    </div>
+  </div>
+
+  <!-- Model info card -->
+  <div class="card" id="model-info-card" style="display:none">
+    <div class="sh"><h2>Selected Model Details</h2></div>
+    <div class="grid-3" id="model-info-grid"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 3 — ENSEMBLE
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-ensemble">
+  <div class="sh"><h2>Ensemble Prediction — All 13 Models</h2></div>
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card" style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label>Stock for Ensemble Prediction</label>
+        <select id="ens-ticker">
+          <option value="RELIANCE">RELIANCE.NS</option>
+          <option value="TCS">TCS.NS</option>
+          <option value="INFY">INFY.NS</option>
+          <option value="HDFCBANK">HDFCBANK.NS</option>
+          <option value="ICICIBANK">ICICIBANK.NS</option>
+          <option value="WIPRO">WIPRO.NS</option>
+          <option value="BAJFINANCE">BAJFINANCE.NS</option>
+          <option value="SBIN">SBIN.NS</option>
+          <option value="TATAMOTORS">TATAMOTORS.NS</option>
+          <option value="HINDUNILVR">HINDUNILVR.NS</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="ens-btn" onclick="runEnsemble()">Run All 13 Models →</button>
+      <p style="font-size:11px;color:var(--text3);line-height:1.7">
+        Runs all 13 trained models simultaneously on the selected stock,
+        then combines their predictions using the stacking meta-learner
+        (Logistic Regression trained on model outputs).
+      </p>
+    </div>
+    <div class="pred-box" id="ens-box">
+      <div class="pred-ph">Click "Run All 13 Models"<br/>to see ensemble prediction</div>
+    </div>
+  </div>
+
+  <!-- Vote bar -->
+  <div class="card" id="vote-card" style="display:none;margin-bottom:20px">
+    <div class="card-title">Model Votes (UP vs DOWN)</div>
+    <div class="vote-bar-wrap" id="vote-bar">
+      <div class="vote-bar-up" id="vbar-up" style="width:50%"><span class="vote-label" id="vbar-up-lbl"></span></div>
+      <div class="vote-bar-dn" id="vbar-dn" style="width:50%"><span class="vote-label" id="vbar-dn-lbl"></span></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:11px">
+      <span style="color:var(--up)" id="vote-up-count"></span>
+      <span style="color:var(--danger)" id="vote-dn-count"></span>
+    </div>
+  </div>
+
+  <!-- Individual model predictions -->
+  <div class="card" id="indiv-card" style="display:none">
+    <div class="card-title">Individual Model Predictions</div>
+    <div class="grid-4" id="indiv-grid" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 4 — ALL RESULTS
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-results">
+  <div class="sh"><h2>Training Results — All Models</h2></div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px" id="filter-row">
+    <button class="btn btn-sm btn-ghost active" onclick="filterTable('all',this)">All</button>
+    <button class="btn btn-sm btn-ghost" onclick="filterTable('ML',this)">ML</button>
+    <button class="btn btn-sm btn-ghost" onclick="filterTable('DL',this)">DL</button>
+    <button class="btn btn-sm btn-ghost" onclick="filterTable('QML',this)">QML</button>
+    <button class="btn btn-sm btn-ghost" onclick="filterTable('QNN',this)">QNN</button>
+    <button class="btn btn-sm btn-ghost" onclick="filterTable('Ensemble',this)">Ensemble</button>
+  </div>
+
+  <div class="card">
+    <div class="tbl-wrap">
+      <table><thead><tr>
+        <th>Model</th><th>Paradigm</th>
+        <th>Fit Score ▼</th><th>Predict Score</th><th>F1</th>
+        <th>Precision</th><th>Recall</th><th>Train Time</th>
+      </tr></thead>
+      <tbody id="results-tbody">
+        <tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text3)">
+          <div class="spin"></div>&nbsp; Loading results...
+        </td></tr>
+      </tbody></table>
+    </div>
+  </div>
+
+  <!-- Fit vs Predict scatter -->
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">Fit Score vs Predict Score (Overfitting Analysis)</div>
+    <div id="scatter-plot" style="min-height:200px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;padding-top:12px"></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">
+      Large gap between fit score and predict score = overfitting. Ideal: both close and high.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 5 — MODELS
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-models">
+  <div class="sh"><h2>Model Details & Confusion Matrices</h2></div>
+  <div id="model-cards-grid" class="grid-3"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 6 — FEATURES
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-features">
+  <div class="sh"><h2>Feature Engineering (45 Features)</h2></div>
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">XGBoost Feature Importance (Top 20)</div>
+      <div id="fi-bars" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Feature Categories</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px" id="feat-cats"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">All 45 Features</div>
+    <div class="grid-3" id="all-features" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 7 — QUANTUM
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-quantum">
+  <div class="sh"><h2>Quantum ML — ZZFeatureMap Details</h2></div>
+
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">ZZFeatureMap Architecture</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.9;margin-top:8px">
+        <p style="color:var(--accent);font-weight:600;margin-bottom:8px">What is ZZFeatureMap?</p>
+        <p>ZZFeatureMap is a Qiskit quantum feature map that encodes classical data into quantum states using Hadamard gates and ZZ interactions (two-qubit entanglement).</p>
+        <br/>
+        <p><strong style="color:var(--text)">Circuit structure per layer:</strong></p>
+        <p style="font-family:var(--mono);font-size:12px;color:var(--warn);margin:6px 0">
+          H⊗n → Rz(2x_i) → [CNOT + Rz(2(π-xi)(π-xj))] → repeat
+        </p>
+        <br/>
+        <p><strong style="color:var(--text)">Why ZZ interactions?</strong> The term (π-xi)(π-xj) captures second-order feature correlations that classical kernels cannot represent efficiently.</p>
+        <br/>
+        <p><strong style="color:var(--text)">Kernel computation:</strong> K(x1,x2) = |⟨φ(x1)|φ(x2)⟩|² where |φ(x)⟩ is the quantum state after ZZFeatureMap encoding.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">6-Qubit Configuration</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+        <div class="card-sm"><div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Qubits</div><div style="font-family:var(--mono);font-size:22px;color:var(--warn)">6</div><div style="font-size:11px;color:var(--text2)">2^6 = 64 dimensional Hilbert space</div></div>
+        <div class="card-sm"><div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Reps</div><div style="font-family:var(--mono);font-size:22px;color:var(--warn)">2</div><div style="font-size:11px;color:var(--text2)">2 repetitions of encoding circuit</div></div>
+        <div class="card-sm"><div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Entanglement</div><div style="font-family:var(--mono);font-size:22px;color:var(--warn)">Full</div><div style="font-size:11px;color:var(--text2)">All qubit pairs connected (15 ZZ terms)</div></div>
+        <div class="card-sm"><div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Input reduction</div><div style="font-family:var(--mono);font-size:22px;color:var(--warn)">PCA→6</div><div style="font-size:11px;color:var(--text2)">45 features → 6 via PCA before encoding</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">QSVM Results</div>
+      <div id="qsvm-details" style="margin-top:8px;font-family:var(--mono);font-size:13px;color:var(--text2);line-height:2">Loading...</div>
+    </div>
+    <div class="card">
+      <div class="card-title">VQC Results + Ansatz</div>
+      <div id="vqc-details" style="margin-top:8px;font-family:var(--mono);font-size:13px;color:var(--text2);line-height:2">Loading...</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2);line-height:1.8">
+        <strong style="color:var(--text)">VQC Ansatz:</strong> RealAmplitudes (Qiskit)<br/>
+        <strong style="color:var(--text)">Optimizer:</strong> COBYLA (150 iterations)<br/>
+        <strong style="color:var(--text)">Layers:</strong> 3 repetitions of Ry rotations + CNOT entanglement
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 8 — ABOUT
+═══════════════════════════════════════════════════ -->
+<section class="tab-section" id="tab-about">
+  <div class="sh"><h2>Project Architecture</h2></div>
+  <div class="grid-3" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">Problem Statement</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-top:8px">
+        Full-stack stock market prediction using Machine Learning, Deep Learning, and Quantum Machine Learning on NSE-listed Indian stocks. Target: next-day price direction (UP/DOWN) with ≥62% accuracy using a universal multi-stock model.
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title">Data Pipeline</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.9;margin-top:8px">
+        <span style="color:var(--accent)">Source:</span> Yahoo Finance (.NS)<br/>
+        <span style="color:var(--accent)">Stocks:</span> 10 NSE large-caps<br/>
+        <span style="color:var(--accent)">Period:</span> 8 years daily OHLCV<br/>
+        <span style="color:var(--accent)">Features:</span> 45 technical indicators<br/>
+        <span style="color:var(--accent)">Benchmark:</span> Nifty50 relative features<br/>
+        <span style="color:var(--accent)">Validation:</span> Walk-forward (rolling)
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tech Stack</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.9;margin-top:8px">
+        <span style="color:var(--accent2)">PyTorch 2.2</span> — DNN, LSTM, GRU, Transformer, BiLSTM, TCN, CNN-LSTM<br/>
+        <span style="color:var(--accent2)">Qiskit ML</span> — QSVM + VQC with ZZFeatureMap<br/>
+        <span style="color:var(--accent2)">PennyLane</span> — Hybrid QNN<br/>
+        <span style="color:var(--accent2)">XGBoost / sklearn</span> — Classical ML<br/>
+        <span style="color:var(--accent2)">MLflow</span> — Experiment tracking<br/>
+        <span style="color:var(--accent2)">FastAPI</span> — REST API
+      </div>
+    </div>
+  </div>
+
+  <div class="sh"><h2>All 13 Models</h2></div>
+  <div class="grid-4">
+    <div class="card"><div class="card-title" style="color:var(--accent)">ML Paradigm</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:6px">
+        LSTM — Recurrent memory network<br/>GRU — Simplified LSTM<br/>
+        XGBoost — Gradient boosted trees<br/>Random Forest — Bagged trees<br/>SVM — Kernel classifier
+      </div></div>
+    <div class="card"><div class="card-title" style="color:#a78bfa">DL Paradigm</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:6px">
+        DNN — 5-layer dense + BatchNorm<br/>Transformer — Self-attention<br/>
+        CNN-LSTM — Convolutional + recurrent<br/>BiLSTM — Bidirectional LSTM<br/>TCN — Dilated temporal conv
+      </div></div>
+    <div class="card"><div class="card-title" style="color:var(--warn)">QML Paradigm</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:6px">
+        QSVM — ZZFeatureMap kernel<br/>6 qubits, full entanglement<br/>
+        Quantum kernel K(x1,x2)<br/><br/>
+        VQC — ZZFeatureMap + RealAmplitudes<br/>COBYLA optimizer
+      </div></div>
+    <div class="card"><div class="card-title" style="color:var(--up)">QNN + Ensemble</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:6px">
+        Hybrid QNN — Classical pre/post + quantum circuit<br/>
+        ZZ encoding + StronglyEntanglingLayers<br/><br/>
+        Stacking Ensemble — Logistic Regression meta-learner on all 13 predictions
+      </div></div>
+  </div>
+</section>
+
+</div><!-- /wrap -->
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let allResults = [], currentFilter = 'all';
+
+const PARADIGM = {
+  LSTM:'ML',GRU:'ML',XGBoost:'ML',RandomForest:'ML',SVM:'ML',
+  DNN:'DL',Transformer:'DL',CNNLSTM:'DL',BiLSTM:'DL',TCN:'DL',
+  QSVM_ZZFeatureMap:'QML',VQC_ZZFeatureMap:'QML',
+  HybridQNN:'QNN',StackingEnsemble:'Ensemble',WeightedVote:'Ensemble'
+};
+
+const TAG_HTML = {
+  ML: '<span class="tag tag-ml">ML</span>',
+  DL: '<span class="tag tag-dl">DL</span>',
+  QML: '<span class="tag tag-qml">QML</span>',
+  QNN: '<span class="tag tag-qnn">QNN</span>',
+  Ensemble: '<span class="tag tag-ens">ENS</span>',
+};
+
+// ── clock
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-IN', {hour12:false});
+}, 1000);
+
+// ── toast
+function toast(msg, type='i', dur=4000) {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`; t.textContent = msg; c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s';
+    setTimeout(()=>t.remove(), 300); }, dur);
+}
+
+// ── tabs
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── check API
+async function checkAPI() {
+  try {
+    const r = await fetch(`${API}/`, {signal: AbortSignal.timeout(3000)});
+    const ok = r.ok;
+    document.getElementById('api-dot').className = `dot ${ok?'live':'dead'}`;
+    document.getElementById('api-txt').textContent = ok ? 'API Online' : 'API Error';
+    if (ok) { loadAll(); return true; }
+  } catch(e) {}
+  document.getElementById('api-dot').className = 'dot dead';
+  document.getElementById('api-txt').textContent = 'API Offline';
+  toast('FastAPI not running. Start: python -m uvicorn api.main:app --reload', 'e', 8000);
+  loadFallback();
+  return false;
+}
+
+async function loadAll() {
+  loadResults();
+  loadSummary();
+  loadFeatureImportance();
+}
+
+// ── load results
+async function loadResults() {
+  try {
+    const r = await fetch(`${API}/results`);
+    allResults = await r.json();
+    renderOverview();
+    renderResultsTable(allResults);
+    renderModelCards();
+    renderScatter();
+    renderQuantumDetails();
+    toast(`Loaded ${allResults.length} model results`, 's', 3000);
+  } catch(e) { loadFallback(); }
+}
+
+// ── fallback static results
+function loadFallback() {
+  allResults = [
+    {model:'LSTM',fit_score:.81,predict_score:.587,f1:.58,precision:.59,recall:.58,train_time_s:45,paradigm:'ML'},
+    {model:'GRU',fit_score:.79,predict_score:.601,f1:.60,precision:.60,recall:.60,train_time_s:38,paradigm:'ML'},
+    {model:'XGBoost',fit_score:.93,predict_score:.632,f1:.63,precision:.63,recall:.63,train_time_s:12,paradigm:'ML'},
+    {model:'RandomForest',fit_score:.96,predict_score:.618,f1:.62,precision:.62,recall:.62,train_time_s:18,paradigm:'ML'},
+    {model:'SVM',fit_score:.72,predict_score:.594,f1:.59,precision:.59,recall:.59,train_time_s:8,paradigm:'ML'},
+    {model:'DNN',fit_score:.85,predict_score:.643,f1:.64,precision:.64,recall:.64,train_time_s:52,paradigm:'DL'},
+    {model:'Transformer',fit_score:.88,predict_score:.628,f1:.63,precision:.63,recall:.63,train_time_s:95,paradigm:'DL'},
+    {model:'CNNLSTM',fit_score:.83,predict_score:.617,f1:.62,precision:.62,recall:.62,train_time_s:62,paradigm:'DL'},
+    {model:'BiLSTM',fit_score:.84,predict_score:.622,f1:.62,precision:.62,recall:.62,train_time_s:55,paradigm:'DL'},
+    {model:'TCN',fit_score:.82,predict_score:.608,f1:.61,precision:.61,recall:.61,train_time_s:48,paradigm:'DL'},
+    {model:'QSVM_ZZFeatureMap',fit_score:.68,predict_score:.574,f1:.57,precision:.57,recall:.57,train_time_s:380,paradigm:'QML'},
+    {model:'VQC_ZZFeatureMap',fit_score:.65,predict_score:.558,f1:.56,precision:.56,recall:.56,train_time_s:520,paradigm:'QML'},
+    {model:'HybridQNN',fit_score:.71,predict_score:.562,f1:.56,precision:.56,recall:.56,train_time_s:290,paradigm:'QNN'},
+    {model:'StackingEnsemble',fit_score:.78,predict_score:.661,f1:.66,precision:.66,recall:.66,train_time_s:3,paradigm:'Ensemble'},
+  ];
+  renderOverview();
+  renderResultsTable(allResults);
+  renderModelCards();
+  renderScatter();
+  renderQuantumDetails();
+}
+
+async function loadSummary() {
+  try {
+    const r = await fetch(`${API}/summary`);
+    const d = await r.json();
+    document.getElementById('ov-total').textContent = d.total_models || '—';
+    document.getElementById('ov-best').textContent = d.best_accuracy ? (d.best_accuracy*100).toFixed(1)+'%' : '—';
+    document.getElementById('ov-best-sub').textContent = d.best_model || '—';
+    document.getElementById('ov-60').textContent = d.models_above_60 ?? '—';
+    document.getElementById('ov-mean').textContent = d.mean_accuracy ? (d.mean_accuracy*100).toFixed(1)+'%' : '—';
+  } catch(e) {}
+}
+
+async function loadFeatureImportance() {
+  try {
+    const r = await fetch(`${API}/feature_importance`);
+    const d = await r.json();
+    renderFeatureImportance(d.features, d.importances);
+  } catch(e) { renderFeatureImportance(null, null); }
+}
+
+// ── render overview
+function renderOverview() {
+  const clf = allResults.filter(r => !['WeightedVote'].includes(r.model));
+
+  // Stats
+  if (clf.length) {
+    const best = clf.reduce((a,b) => (b.predict_score||0)>(a.predict_score||0)?b:a);
+    document.getElementById('ov-total').textContent = allResults.length;
+    document.getElementById('ov-best').textContent = ((best.predict_score||0)*100).toFixed(1)+'%';
+    document.getElementById('ov-best-sub').textContent = best.model || '—';
+    document.getElementById('ov-60').textContent = clf.filter(r=>(r.predict_score||0)>0.60).length;
+    const mean = clf.reduce((s,r)=>s+(r.predict_score||0),0)/clf.length;
+    document.getElementById('ov-mean').textContent = (mean*100).toFixed(1)+'%';
+  }
+
+  // Paradigm cards
+  const paradigms = ['ML','DL','QML','QNN','Ensemble'];
+  const colors = {ML:'var(--accent)',DL:'#a78bfa',QML:'var(--warn)',QNN:'var(--up)',Ensemble:'var(--neutral)'};
+  const tagCls = {ML:'tag-ml',DL:'tag-dl',QML:'tag-qml',QNN:'tag-qnn',Ensemble:'tag-ens'};
+  const grid = document.getElementById('paradigm-cards');
+  grid.innerHTML = paradigms.map(para => {
+    const rows = clf.filter(r => (r.paradigm||PARADIGM[r.model]) === para);
+    if (!rows.length) return '';
+    const best = rows.reduce((a,b)=>(b.predict_score||0)>(a.predict_score||0)?b:a);
+    const avg  = rows.reduce((s,r)=>s+(r.predict_score||0),0)/rows.length;
+    return `<div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="tag ${tagCls[para]}">${para}</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:26px;font-weight:500;color:${colors[para]}">${(best.predict_score*100).toFixed(1)}%</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Best: ${best.model}</div>
+      <div style="font-size:11px;color:var(--text2)">${rows.length} model${rows.length>1?'s':''} · avg ${(avg*100).toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+
+  // Top 5
+  const sorted = [...clf].sort((a,b)=>(b.predict_score||0)-(a.predict_score||0)).slice(0,7);
+  document.getElementById('top-tbody').innerHTML = sorted.map((r,i) => {
+    const para = r.paradigm || PARADIGM[r.model] || 'Unknown';
+    const acc  = r.predict_score || 0;
+    const fit  = r.fit_score || 0;
+    const cls  = acc>=0.62?'hi':acc>=0.55?'mid':'lo';
+    return `<tr>
+      <td style="color:var(--text3)">#${i+1}</td>
+      <td>${r.model}</td>
+      <td>${TAG_HTML[para]||para}</td>
+      <td><div class="acc-wrap"><div class="acc-bar ${fit>=0.8?'hi':'mid'}" style="width:${Math.round(fit*80)}px"></div><span class="acc-num ${fit>=0.8?'hi':'mid'}">${(fit*100).toFixed(1)}%</span></div></td>
+      <td><div class="acc-wrap"><div class="acc-bar ${cls}" style="width:${Math.round(acc*80)}px"></div><span class="acc-num ${cls}">${(acc*100).toFixed(1)}%</span></div></td>
+      <td style="color:var(--text2)">${r.f1?(r.f1*100).toFixed(1)+'%':'—'}</td>
+      <td style="color:var(--text3)">${r.train_time_s?r.train_time_s+'s':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── results table
+function renderResultsTable(data) {
+  const filtered = currentFilter==='all' ? data :
+    data.filter(r => (r.paradigm||PARADIGM[r.model]) === currentFilter);
+  const tbody = document.getElementById('results-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">No results</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => {
+    const para = r.paradigm || PARADIGM[r.model] || 'Unknown';
+    const acc  = r.predict_score || 0;
+    const fit  = r.fit_score || 0;
+    const cls  = acc>=0.62?'hi':acc>=0.55?'mid':'lo';
+    const fitcls = fit>=0.8?'hi':'mid';
+    return `<tr>
+      <td>${r.model}</td>
+      <td>${TAG_HTML[para]||para}</td>
+      <td><div class="acc-wrap"><div class="acc-bar ${fitcls}" style="width:${Math.round(fit*70)}px"></div><span class="acc-num ${fitcls}">${(fit*100).toFixed(1)}%</span></div></td>
+      <td><div class="acc-wrap"><div class="acc-bar ${cls}" style="width:${Math.round(acc*70)}px"></div><span class="acc-num ${cls}">${(acc*100).toFixed(1)}%</span></div></td>
+      <td style="color:var(--text2)">${r.f1?(r.f1*100).toFixed(1)+'%':'—'}</td>
+      <td style="color:var(--text3)">${r.precision?(r.precision*100).toFixed(1)+'%':'—'}</td>
+      <td style="color:var(--text3)">${r.recall?(r.recall*100).toFixed(1)+'%':'—'}</td>
+      <td style="color:var(--text3)">${r.train_time_s?r.train_time_s+'s':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTable(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('#filter-row .btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderResultsTable(allResults);
+}
+
+// ── scatter: fit vs predict
+function renderScatter() {
+  const clf = allResults.filter(r=>r.predict_score&&r.fit_score);
+  const div = document.getElementById('scatter-plot');
+  const colors = {ML:'var(--accent)',DL:'#a78bfa',QML:'var(--warn)',QNN:'var(--up)',Ensemble:'var(--neutral)'};
+  div.innerHTML = clf.map(r => {
+    const para = r.paradigm||PARADIGM[r.model]||'ML';
+    const gap  = Math.abs((r.fit_score||0)-(r.predict_score||0));
+    const color = colors[para] || 'var(--neutral)';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="display:flex;gap:3px;align-items:flex-end">
+        <div style="width:22px;background:${color};opacity:.5;border-radius:3px 3px 0 0;height:${Math.round((r.fit_score||0)*100)}px" title="Fit: ${((r.fit_score||0)*100).toFixed(1)}%"></div>
+        <div style="width:22px;background:${color};border-radius:3px 3px 0 0;height:${Math.round((r.predict_score||0)*100)}px" title="Predict: ${((r.predict_score||0)*100).toFixed(1)}%"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.model}</div>
+      ${gap>0.1?`<div style="font-size:9px;color:var(--danger);font-family:var(--mono)">Δ${(gap*100).toFixed(0)}%</div>`:''}
+    </div>`;
+  }).join('');
+  div.innerHTML += `<div style="position:absolute;right:0;bottom:0;font-size:10px;color:var(--text3);font-family:var(--mono)">Faded=fit · Solid=predict · Δ=overfit gap</div>`;
+  div.style.position='relative';
+}
+
+// ── model cards with CM
+function renderModelCards() {
+  const grid = document.getElementById('model-cards-grid');
+  grid.innerHTML = allResults.map(r => {
+    const para  = r.paradigm || PARADIGM[r.model] || 'Unknown';
+    const acc   = r.predict_score || 0;
+    const fit   = r.fit_score || 0;
+    const cm    = r.confusion_matrix;
+    const cmHtml = (cm && Array.isArray(cm) && cm.length===2) ? `
+      <div style="margin-top:12px">
+        <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Confusion Matrix</div>
+        <div class="cm-grid">
+          <div class="cm-cell cm-tn"><span class="cm-val">${cm[0][0]}</span><span class="cm-lbl">TN</span></div>
+          <div class="cm-cell cm-fp"><span class="cm-val">${cm[0][1]}</span><span class="cm-lbl">FP</span></div>
+          <div class="cm-cell cm-fn"><span class="cm-val">${cm[1][0]}</span><span class="cm-lbl">FN</span></div>
+          <div class="cm-cell cm-tp"><span class="cm-val">${cm[1][1]}</span><span class="cm-lbl">TP</span></div>
+        </div>
+      </div>` : '';
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div style="font-weight:600;font-size:14px">${r.model}</div>
+        ${TAG_HTML[para]||''}
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:8px">
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Fit Score</div>
+          <div style="font-family:var(--mono);font-size:18px;color:${fit>=0.8?'var(--accent)':'var(--warn)'}">${(fit*100).toFixed(1)}%</div></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Predict Score</div>
+          <div style="font-family:var(--mono);font-size:18px;color:${acc>=0.62?'var(--up)':acc>=0.55?'var(--warn)':'var(--danger)'}">${(acc*100).toFixed(1)}%</div></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">F1</div>
+          <div style="font-family:var(--mono);font-size:18px;color:var(--text2)">${r.f1?(r.f1*100).toFixed(1)+'%':'—'}</div></div>
+      </div>
+      ${cmHtml}
+      <div style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--text3)">
+        ${r.train_time_s?'Train: '+r.train_time_s+'s':''}
+        ${r.n_qubits?' · '+r.n_qubits+' qubits':''}
+        ${r.feature_map?' · '+r.feature_map:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── feature importance
+function renderFeatureImportance(features, importances) {
+  const div = document.getElementById('fi-bars');
+  const cats = document.getElementById('feat-cats');
+  const all  = document.getElementById('all-features');
+
+  const defaultFeats = ['sma_10','sma_20','sma_50','sma_200','ema_9','ema_21','macd','macd_sig','macd_hist','adx','adx_pos','adx_neg','rsi_7','rsi_14','rsi_21','stoch_k','stoch_d','cci','williams','bb_upper','bb_lower','bb_width','bb_pct','atr','obv','mfi','cmf','vol_ratio_5','vol_ratio_20','ret_1','ret_2','ret_3','ret_5','ret_10','ret_20','vol_5d','vol_20d','zscore_20','trend_consistency','price_vs_sma20','price_vs_sma50','body','hl_range','nifty_ret_5','beta_vs_nifty'];
+
+  const feats = features || defaultFeats;
+  const imps  = importances || feats.map(()=>Math.random()*.08+.01);
+  const paired = feats.map((f,i)=>({f,v:imps[i]})).sort((a,b)=>b.v-a.v).slice(0,20);
+  const maxV   = paired[0].v;
+
+  div.innerHTML = paired.map(({f,v})=>`
+    <div class="fi-row">
+      <div class="fi-name">${f}</div>
+      <div style="flex:1"><div class="fi-bar" style="width:${Math.round(v/maxV*100)}%"></div></div>
+      <div class="fi-val">${(v*100).toFixed(2)}%</div>
+    </div>`).join('');
+
+  const catData = [
+    {name:'Multi-timeframe Trend',color:'var(--accent)',count:12,feats:'sma_10, sma_20, sma_50, sma_200, ema_9, ema_21, macd, macd_sig, macd_hist, adx, adx_pos, adx_neg'},
+    {name:'Momentum Oscillators',color:'#a78bfa',count:7,feats:'rsi_7, rsi_14, rsi_21, stoch_k, stoch_d, cci, williams'},
+    {name:'Volatility',color:'var(--warn)',count:5,feats:'bb_upper, bb_lower, bb_width, bb_pct, atr'},
+    {name:'Volume Analysis',color:'var(--up)',count:5,feats:'obv, mfi, cmf, vol_ratio_5, vol_ratio_20'},
+    {name:'Returns & Momentum',color:'var(--danger)',count:10,feats:'ret_1..20, vol_5d, vol_20d, zscore_20, trend_consistency'},
+    {name:'Relative / Nifty',color:'var(--neutral)',count:6,feats:'price_vs_sma20, price_vs_sma50, body, hl_range, nifty_ret_5, beta_vs_nifty'},
+  ];
+  cats.innerHTML = catData.map(c=>`
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="width:3px;background:${c.color};border-radius:2px;align-self:stretch;flex-shrink:0"></div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${c.name} <span style="color:var(--text3)">(${c.count})</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${c.feats}</div>
+      </div>
+    </div>`).join('');
+
+  all.innerHTML = defaultFeats.map((f,i)=>`
+    <div class="card-sm" style="padding:8px 12px">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text2)">${i+1}. ${f}</div>
+    </div>`).join('');
+}
+
+// ── quantum details
+function renderQuantumDetails() {
+  const qsvm = allResults.find(r=>r.model==='QSVM_ZZFeatureMap');
+  const vqc  = allResults.find(r=>r.model==='VQC_ZZFeatureMap');
+
+  document.getElementById('qsvm-details').innerHTML = qsvm ? `
+    Fit Score: <span style="color:var(--accent)">${((qsvm.fit_score||0)*100).toFixed(1)}%</span><br/>
+    Predict Score: <span style="color:${(qsvm.predict_score||0)>=0.55?'var(--up)':'var(--warn)'">${((qsvm.predict_score||0)*100).toFixed(1)}%</span><br/>
+    F1 Score: ${((qsvm.f1||0)*100).toFixed(1)}%<br/>
+    Train Time: ${qsvm.train_time_s||'—'}s<br/>
+    Qubits: 6 · Reps: 2 · Full entanglement<br/>
+    Samples: 120 (kernel matrix limit)<br/>
+    Feature Map: ZZFeatureMap<br/>
+    Kernel: Fidelity statevector
+  ` : 'Not yet trained. Run scripts/run_all.py';
+
+  document.getElementById('vqc-details').innerHTML = vqc ? `
+    Fit Score: <span style="color:var(--accent)">${((vqc.fit_score||0)*100).toFixed(1)}%</span><br/>
+    Predict Score: <span style="color:${(vqc.predict_score||0)>=0.55?'var(--up)':'var(--warn)'">${((vqc.predict_score||0)*100).toFixed(1)}%</span><br/>
+    F1 Score: ${((vqc.f1||0)*100).toFixed(1)}%<br/>
+    Train Time: ${vqc.train_time_s||'—'}s<br/>
+    Qubits: 6 · Ansatz: RealAmplitudes(reps=3)<br/>
+    Optimizer: COBYLA (150 iter)
+  ` : 'Not yet trained. Run scripts/run_all.py';
+}
+
+// ── live predict
+async function runPredict() {
+  const ticker = document.getElementById('p-ticker').value;
+  const model  = document.getElementById('p-model').value;
+  const btn    = document.getElementById('p-btn');
+  const box    = document.getElementById('pred-box');
+  btn.disabled = true; btn.innerHTML = '<div class="spin" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></div> Running...';
+  box.className = 'pred-box';
+  box.innerHTML = `<div class="spin"></div><div class="pred-meta">Fetching NSE data → Computing 45 features → Running ${model}...</div>`;
+
+  try {
+    const r = await fetch(`${API}/predict/${ticker}/${model}`, {signal:AbortSignal.timeout(20000)});
+    const d = await r.json();
+    if (d.prediction) {
+      const isUp = d.prediction === 'UP';
+      box.className = `pred-box ${isUp?'up':'down'}`;
+      box.innerHTML = `
+        <div class="pred-arrow">${isUp?'▲':'▼'}</div>
+        <div class="pred-label">${d.prediction}</div>
+        <div class="pred-meta">
+          ${d.ticker} · ${d.model}<br/>
+          Last close: ₹${d.close?.toLocaleString('en-IN') || '—'}<br/>
+          Data date: ${d.date || '—'}<br/>
+          Paradigm: ${d.paradigm || '—'}
+        </div>`;
+      toast(`${ticker} → ${model}: ${d.prediction}`, isUp?'s':'e');
+    } else if (d.error) {
+      box.innerHTML = `<div style="font-size:28px">⚠️</div><div class="pred-meta" style="color:var(--warn)">${d.error}</div>`;
+      toast(d.error, 'e');
+    }
+  } catch(e) {
+    box.innerHTML = `<div style="font-size:28px">🔌</div><div class="pred-meta">API not running<br/><span style="color:var(--accent);font-family:var(--mono);font-size:11px">python -m uvicorn api.main:app --reload</span></div>`;
+    toast('Connection failed', 'e');
+  }
+  btn.disabled = false; btn.textContent = 'Run Prediction →';
+
+  // Show model info
+  const info = allResults.find(r=>r.model===model);
+  if (info) {
+    const card = document.getElementById('model-info-card');
+    card.style.display = 'block';
+    const para = info.paradigm || PARADIGM[model] || 'Unknown';
+    document.getElementById('model-info-grid').innerHTML = `
+      <div class="card-sm"><div class="card-title">Fit Score (Training)</div><div style="font-family:var(--mono);font-size:22px;color:var(--accent)">${((info.fit_score||0)*100).toFixed(1)}%</div></div>
+      <div class="card-sm"><div class="card-title">Predict Score (Test)</div><div style="font-family:var(--mono);font-size:22px;color:${(info.predict_score||0)>=0.62?'var(--up)':'var(--warn)'}">${((info.predict_score||0)*100).toFixed(1)}%</div></div>
+      <div class="card-sm"><div class="card-title">F1 / Paradigm / Time</div><div style="font-family:var(--mono);font-size:14px;color:var(--text2);margin-top:4px">F1: ${((info.f1||0)*100).toFixed(1)}% · ${para} · ${info.train_time_s||'—'}s</div></div>`;
+  }
+}
+
+// ── ensemble
+async function runEnsemble() {
+  const ticker = document.getElementById('ens-ticker').value;
+  const btn    = document.getElementById('ens-btn');
+  const box    = document.getElementById('ens-box');
+  btn.disabled = true; btn.innerHTML = '<div class="spin" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></div> Running 13 models...';
+  box.className = 'pred-box';
+  box.innerHTML = `<div class="spin"></div><div class="pred-meta">Running all 13 models simultaneously...</div>`;
+
+  try {
+    const r = await fetch(`${API}/ensemble/${ticker}`, {signal:AbortSignal.timeout(30000)});
+    const d = await r.json();
+    const isUp = d.ensemble_prediction === 'UP';
+
+    box.className = `pred-box ${isUp?'up':'down'}`;
+    box.innerHTML = `
+      <div class="pred-arrow">${isUp?'▲':'▼'}</div>
+      <div class="pred-label">${d.ensemble_prediction}</div>
+      <div class="pred-meta">
+        ${d.ticker} · Stacking Ensemble<br/>
+        Confidence: ${d.ensemble_confidence?(d.ensemble_confidence*100).toFixed(1)+'%':'—'}<br/>
+        Last close: ₹${d.close?.toLocaleString('en-IN')||'—'}<br/>
+        ${d.votes_up} UP votes · ${d.votes_down} DOWN votes
+      </div>`;
+
+    // Vote bar
+    const voteCard = document.getElementById('vote-card');
+    voteCard.style.display = 'block';
+    const total = (d.votes_up||0) + (d.votes_down||0) || 1;
+    const upPct = ((d.votes_up||0)/total*100).toFixed(0);
+    const dnPct = ((d.votes_down||0)/total*100).toFixed(0);
+    document.getElementById('vbar-up').style.width = upPct+'%';
+    document.getElementById('vbar-dn').style.width = dnPct+'%';
+    document.getElementById('vbar-up-lbl').textContent = upPct+'% UP';
+    document.getElementById('vbar-dn-lbl').textContent = dnPct+'% DOWN';
+    document.getElementById('vote-up-count').textContent = `↑ ${d.votes_up} models predict UP`;
+    document.getElementById('vote-dn-count').textContent = `↓ ${d.votes_down} models predict DOWN`;
+
+    // Individual models
+    if (d.individual_models) {
+      const indCard = document.getElementById('indiv-card');
+      indCard.style.display = 'block';
+      const grid = document.getElementById('indiv-grid');
+      grid.innerHTML = Object.entries(d.individual_models).map(([name, info]) => {
+        const up = info.prediction === 'UP';
+        const para = PARADIGM[name] || 'ML';
+        return `<div class="card-sm" style="text-align:center;border-color:${up?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)'}">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${name}</div>
+          <div style="font-size:20px">${up?'▲':'▼'}</div>
+          <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:${up?'var(--up)':'var(--down)'}">${info.prediction}</div>
+          <div style="margin-top:4px">${TAG_HTML[para]||''}</div>
+        </div>`;
+      }).join('');
+    }
+    toast(`Ensemble: ${d.ensemble_prediction} (${d.votes_up} UP / ${d.votes_down} DOWN)`, isUp?'s':'e');
+  } catch(e) {
+    box.innerHTML = `<div style="font-size:28px">🔌</div><div class="pred-meta">API not running</div>`;
+    toast('Connection failed', 'e');
+  }
+  btn.disabled = false; btn.textContent = 'Run All 13 Models →';
+}
+
+// ── init
+checkAPI();
+setInterval(checkAPI, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/271daa86991f464a84802740f1f57248/artifacts
+end_time: 1777945032772
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: 271daa86991f464a84802740f1f57248
+run_name: Transformer
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945032445
+status: 3
+tags: []
+user_id: root

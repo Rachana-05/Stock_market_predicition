@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/dfdff31c2cec4b93a13fadb7d4f6c213/artifacts
+end_time: 1777946057208
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: dfdff31c2cec4b93a13fadb7d4f6c213
+run_name: CNNLSTM
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777946056920
+status: 3
+tags: []
+user_id: root

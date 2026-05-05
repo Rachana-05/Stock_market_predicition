@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/c5bd2ca13100433291f243a0b82c9bda/artifacts
+end_time: 1777946980081
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: c5bd2ca13100433291f243a0b82c9bda
+run_name: BiLSTM
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777946979826
+status: 3
+tags: []
+user_id: root

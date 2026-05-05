@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/76d880e5e25f47d4b375239b666c486e/artifacts
+end_time: 1777945631415
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: 76d880e5e25f47d4b375239b666c486e
+run_name: SVM
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945631169
+status: 3
+tags: []
+user_id: root

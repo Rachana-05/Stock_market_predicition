@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/340d77b43b5e481a8877de133d146578/artifacts
+end_time: 1777945479211
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: 340d77b43b5e481a8877de133d146578
+run_name: DNN
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945478964
+status: 3
+tags: []
+user_id: root

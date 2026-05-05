@@ -1,0 +1,14 @@
+artifact_uri: file:////workspace/stock_v2/mlruns/977369276189155644/9ec483ddea274b9d8442d3bff4e54dc5/artifacts
+end_time: 1777945610427
+entry_point_name: ''
+experiment_id: '977369276189155644'
+lifecycle_stage: active
+run_id: 9ec483ddea274b9d8442d3bff4e54dc5
+run_name: LSTM
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777945610121
+status: 3
+tags: []
+user_id: root

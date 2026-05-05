@@ -1,0 +1,8 @@
+artifact_location: file:////workspace/stock_v2/mlruns/977369276189155644
+creation_time: 1777944861832
+experiment_id: '977369276189155644'
+last_update_time: 1777944861832
+lifecycle_stage: active
+name: stock_prediction_v2
+trace_location: null
+workspace: default
