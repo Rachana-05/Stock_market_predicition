@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: stock_v2
+        working-directory: stock_v2_export
 
     steps:
       - name: Checkout repository
