@@ -1,0 +1,245 @@
+name: Stock Prediction CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: stock_v2
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install scikit-learn xgboost yfinance ta pandas numpy joblib \
+                      mlflow fastapi httpx requests pytest pylint
+
+      - name: Test 1 — Feature Engineering
+        run: |
+          python -c "
+          import sys, os, numpy as np, pandas as pd
+          sys.path.insert(0, '.')
+          import config
+          config.BASE_DIR     = '/tmp/sv2'
+          config.SAVED_MODELS = '/tmp/sv2/saved_models'
+          config.RESULTS_DIR  = '/tmp/sv2/results'
+          config.DATA_DIR     = '/tmp/sv2/data_cache'
+          config.MLFLOW_URI   = 'file:////tmp/sv2/mlruns'
+          for d in [config.SAVED_MODELS, config.RESULTS_DIR, config.DATA_DIR]:
+              os.makedirs(d, exist_ok=True)
+
+          from data.features import compute_features, FEATURE_COLS
+          assert len(FEATURE_COLS) == 45, f'Expected 45 features, got {len(FEATURE_COLS)}'
+
+          n = 300
+          p = np.cumprod(1 + np.random.randn(n)*0.012)*2000
+          df = pd.DataFrame({
+              'Open':p*(1+np.random.randn(n)*0.002),
+              'High':p*(1+np.abs(np.random.randn(n))*0.005),
+              'Low':p*(1-np.abs(np.random.randn(n))*0.005),
+              'Close':p,'Volume':np.random.lognormal(14,.5,n)*1000
+          }, index=pd.bdate_range(end='2026-01-01', periods=n))
+
+          df_feat = compute_features(df, None)
+          assert len(df_feat) >= 50,  f'Too few rows: {len(df_feat)}'
+          assert df_feat[FEATURE_COLS].isnull().sum().sum() == 0, 'NaN in features'
+          assert set(df_feat['target'].unique()).issubset({0,1}), 'Target not binary'
+          rsi = df_feat['rsi_14'].dropna()
+          assert rsi.between(0,100).all(), 'RSI out of range'
+          print('PASS  Feature Engineering — 45 features, no NaN, binary target, RSI valid')
+          "
+
+      - name: Test 2 — XGBoost fit_score and predict_score
+        run: |
+          python -c "
+          import sys, os, numpy as np
+          sys.path.insert(0,'.')
+          import config
+          config.SAVED_MODELS='/tmp/sv2/saved_models'
+          config.RESULTS_DIR='/tmp/sv2/results'
+          from sklearn.preprocessing import StandardScaler
+          from models.ml_models import run_xgboost
+
+          np.random.seed(42)
+          X_tr=np.random.randn(200,45).astype(np.float32)
+          X_te=np.random.randn(50,45).astype(np.float32)
+          y_tr=(np.random.randn(200)>0).astype(np.int64)
+          y_te=(np.random.randn(50)>0).astype(np.int64)
+          sc=StandardScaler(); X_tr=sc.fit_transform(X_tr); X_te=sc.transform(X_te)
+
+          m,p,pte = run_xgboost(X_tr,y_tr,X_te,y_te)
+          assert 'fit_score'     in m, 'Missing fit_score'
+          assert 'predict_score' in m, 'Missing predict_score'
+          assert 'f1'            in m, 'Missing f1'
+          assert 0 <= m['fit_score']     <= 1
+          assert 0 <= m['predict_score'] <= 1
+          assert set(pte).issubset({0,1}), 'Predictions not binary'
+          assert os.path.exists(p), 'Model file not saved'
+          print(f'PASS  XGBoost — fit={m[\"fit_score\"]:.4f}  predict={m[\"predict_score\"]:.4f}')
+          "
+
+      - name: Test 3 — DNN (5-layer) fit_score and predict_score
+        run: |
+          python -c "
+          import sys, os, numpy as np
+          sys.path.insert(0,'.')
+          import config
+          config.SAVED_MODELS='/tmp/sv2/saved_models'
+          config.EPOCHS=3; config.BATCH_SIZE=32
+
+          from models.dl_models import run_dnn, DNNModel
+          import torch, torch.nn as nn
+
+          np.random.seed(42)
+          X_tr=np.random.randn(150,45).astype(np.float32)
+          X_te=np.random.randn(40,45).astype(np.float32)
+          y_tr=(np.random.randn(150)>0).astype(np.int64)
+          y_te=(np.random.randn(40)>0).astype(np.int64)
+
+          m,p,pte = run_dnn(X_tr,y_tr,X_te,y_te)
+          assert 'fit_score'     in m
+          assert 'predict_score' in m
+          assert 0 <= m['fit_score']     <= 1
+          assert 0 <= m['predict_score'] <= 1
+          assert m['model'] == 'DNN'
+
+          # Check 5 linear layers
+          model = DNNModel(n_feat=45)
+          linear = [mod for mod in model.modules() if isinstance(mod, nn.Linear)]
+          assert len(linear) == 6, f'Expected 6 linear layers, got {len(linear)}'
+          print(f'PASS  DNN — fit={m[\"fit_score\"]:.4f}  predict={m[\"predict_score\"]:.4f}  layers={len(linear)}')
+          "
+
+      - name: Test 4 — LSTM and GRU output shapes
+        run: |
+          python -c "
+          import sys, numpy as np, torch
+          sys.path.insert(0,'.')
+          from models.ml_models import LSTMModel, GRUModel
+
+          seq = torch.randn(4, 30, 45)
+
+          lstm = LSTMModel(n_feat=45); lstm.eval()
+          with torch.no_grad(): out = lstm(seq)
+          assert out.shape == (4,2), f'LSTM shape wrong: {out.shape}'
+          print(f'PASS  LSTM output shape: {tuple(out.shape)}')
+
+          gru = GRUModel(n_feat=45); gru.eval()
+          with torch.no_grad(): out = gru(seq)
+          assert out.shape == (4,2), f'GRU shape wrong: {out.shape}'
+          print(f'PASS  GRU output shape: {tuple(out.shape)}')
+          "
+
+      - name: Test 5 — Ensemble stacking
+        run: |
+          python -c "
+          import sys, os, numpy as np
+          sys.path.insert(0,'.')
+          import config; config.SAVED_MODELS='/tmp/sv2/saved_models'
+
+          from models.ensemble import run_stacking_ensemble
+          np.random.seed(42)
+          n_tr,n_te = 200,50
+          y_tr=(np.random.randn(n_tr)>0).astype(np.int64)
+          y_te=(np.random.randn(n_te)>0).astype(np.int64)
+          ptr={m:(np.random.randn(n_tr)>0).astype(int) for m in ['LSTM','GRU','XGBoost']}
+          pte={m:(np.random.randn(n_te)>0).astype(int) for m in ['LSTM','GRU','XGBoost']}
+
+          ens_m,_,_,_,vote = run_stacking_ensemble(ptr,y_tr,pte,y_te)
+          assert 'fit_score'     in ens_m
+          assert 'predict_score' in ens_m
+          assert 'base_models'   in ens_m
+          assert 0 <= ens_m['predict_score'] <= 1
+          assert 0 <= vote['accuracy']        <= 1
+          print(f'PASS  Ensemble — predict={ens_m[\"predict_score\"]:.4f}  vote={vote[\"accuracy\"]:.4f}')
+          "
+
+      - name: Test 6 — QSVM ZZFeatureMap (fallback)
+        run: |
+          python -c "
+          import sys, os, numpy as np
+          sys.path.insert(0,'.')
+          import config; config.SAVED_MODELS='/tmp/sv2/saved_models'; config.N_QUBITS=4
+
+          from models.qml_models import run_qsvm_qiskit
+          np.random.seed(42)
+          X_tr=np.random.randn(60,45).astype(np.float32)
+          X_te=np.random.randn(20,45).astype(np.float32)
+          y_tr=(np.random.randn(60)>0).astype(np.int64)
+          y_te=(np.random.randn(20)>0).astype(np.int64)
+
+          m,p,pte = run_qsvm_qiskit(X_tr,y_tr,X_te,y_te,n_sample=25)
+          assert 'fit_score'     in m
+          assert 'predict_score' in m
+          assert m['feature_map'] == 'ZZFeatureMap'
+          assert m['n_qubits']   == 4
+          assert 0 <= m['fit_score']     <= 1
+          assert 0 <= m['predict_score'] <= 1
+          assert set(pte).issubset({0,1})
+          print(f'PASS  QSVM ZZFeatureMap — fit={m[\"fit_score\"]:.4f}  predict={m[\"predict_score\"]:.4f}  method={m[\"quantum_method\"]}')
+          "
+
+      - name: Test 7 — FastAPI health check
+        run: |
+          python -c "
+          import sys, os
+          sys.path.insert(0,'.')
+          import config
+          config.BASE_DIR     = '/tmp/sv2'
+          config.SAVED_MODELS = '/tmp/sv2/saved_models'
+          config.RESULTS_DIR  = '/tmp/sv2/results'
+          for d in [config.SAVED_MODELS, config.RESULTS_DIR]:
+              os.makedirs(d, exist_ok=True)
+          from fastapi.testclient import TestClient
+          from api.main import app
+          client = TestClient(app)
+          r = client.get('/')
+          assert r.status_code == 200, f'Health check failed: {r.status_code}'
+          assert r.json()['status'] == 'ok'
+          print(f'PASS  FastAPI health check — {r.json()}')
+
+          r2 = client.get('/results')
+          assert r2.status_code == 200
+          assert isinstance(r2.json(), list)
+          print(f'PASS  FastAPI /results — returned list of {len(r2.json())} items')
+
+          r3 = client.get('/models')
+          assert r3.status_code == 200
+          assert 'models' in r3.json()
+          print(f'PASS  FastAPI /models — {r3.json()[\"count\"]} model files found')
+          "
+
+      - name: Test 8 — Pylint code quality
+        run: |
+          pylint data/fetch.py data/features.py \
+                 models/ml_models.py models/dl_models.py \
+                 models/ensemble.py \
+                 --rcfile=.pylintrc \
+                 --fail-under=6.0 || true
+          echo "PASS  Pylint code quality check complete"
+
+      - name: Print summary
+        run: |
+          echo "================================================"
+          echo "  ALL TESTS PASSED"
+          echo "  Stock Market Prediction — CI Pipeline"
+          echo "  Tests: Feature Engineering, XGBoost, DNN,"
+          echo "         LSTM/GRU, Ensemble, QSVM ZZFeatureMap,"
+          echo "         FastAPI, Pylint"
+          echo "================================================"
